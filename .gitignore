@@ -1,0 +1,16 @@
+# Ignore compiled Java class files and build output
+bin/
+*.class
+
+# Ignore IDE/project files
+*.iml
+*.log
+*.swp
+*.swo
+*.tmp
+.DS_Store
+.idea/
+.vscode/
+
+# Ignore OS junk files
+Thumbs.db
