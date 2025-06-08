@@ -23,6 +23,10 @@ public class OrganizerDashboard extends JFrame {
     private File selectedImageFile;
     private String organizerClubName;
 
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "password";
+
     public OrganizerDashboard(String clubName) {
         this.organizerClubName = clubName;
         setTitle("Organizer Dashboard");
@@ -93,7 +97,7 @@ public class OrganizerDashboard extends JFrame {
 
             // Save event to DB
             try (Connection conn = DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                    DB_URL, DB_USER, DB_PASSWORD)) {
 
                 // 1. Insert club if not exists
                 String checkClubSql = "SELECT clubName FROM clubs WHERE clubName = ?";
@@ -137,7 +141,7 @@ public class OrganizerDashboard extends JFrame {
         profilePanel.setBorder(BorderFactory.createTitledBorder("My Events"));
 
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                DB_URL, DB_USER, DB_PASSWORD)) {
             // Fetch events hosted by this organizer
             String sql = "SELECT eid, ename, date, startTime, endTime FROM events WHERE clubName = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -188,7 +192,7 @@ public class OrganizerDashboard extends JFrame {
 
         java.util.List<Student> students = new java.util.ArrayList<>();
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                DB_URL, DB_USER, DB_PASSWORD)) {
             String sql = "SELECT s.sid, s.sname FROM registration_details r JOIN student s ON r.sid = s.sid WHERE r.eid = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setInt(1, eid);
@@ -224,67 +228,73 @@ public class OrganizerDashboard extends JFrame {
 
     private void confirmAttendanceForEvent(int eid, String ename, java.util.List<Student> students) {
     try (Connection conn = DriverManager.getConnection(
-            "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
-
-        // Get event date and time
-        String eventSql = "SELECT date, startTime, endTime FROM events WHERE eid = ?";
-        Date eventDate = null;
-        Time eventStart = null, eventEnd = null;
-        try (PreparedStatement stmt = conn.prepareStatement(eventSql)) {
-            stmt.setInt(1, eid);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    eventDate = rs.getDate("date");
-                    eventStart = rs.getTime("startTime");
-                    eventEnd = rs.getTime("endTime");
-                }
-            }
-        }
-        if (eventDate == null) return;
+            DB_URL, DB_USER, DB_PASSWORD)) {
 
         for (Student s : students) {
-            // Find all classes for this student
-            String classSql = "SELECT c.cid, c.subject, c.tid FROM attends a JOIN class c ON a.cid = c.cid WHERE a.sid = ?";
-            try (PreparedStatement classStmt = conn.prepareStatement(classSql)) {
-                classStmt.setInt(1, s.getSid());
-                try (ResultSet classRs = classStmt.executeQuery()) {
-                    while (classRs.next()) {
-                        int cid = classRs.getInt("cid");
-                        String subject = classRs.getString("subject");
-                        int tid = classRs.getInt("tid");
+            // Get event details
+            String eventSql = "SELECT date, startTime, endTime FROM events WHERE eid = ?";
+            Date eventDate = null;
+            Time eventStart = null, eventEnd = null;
+            try (PreparedStatement eventStmt = conn.prepareStatement(eventSql)) {
+                eventStmt.setInt(1, eid);
+                try (ResultSet eventRs = eventStmt.executeQuery()) {
+                    if (eventRs.next()) {
+                        eventDate = eventRs.getDate("date");
+                        eventStart = eventRs.getTime("startTime");
+                        eventEnd = eventRs.getTime("endTime");
+                    }
+                }
+            }
 
-                        // Check for overlapping timing on event date
-                        String timingSql = "SELECT day_of_week, start_time, end_time FROM class_timing WHERE cid = ?";
-                        try (PreparedStatement timingStmt = conn.prepareStatement(timingSql)) {
-                            timingStmt.setInt(1, cid);
-                            try (ResultSet timingRs = timingStmt.executeQuery()) {
-                                java.util.Calendar cal = java.util.Calendar.getInstance();
-                                cal.setTime(eventDate);
-                                String eventDay = new java.text.SimpleDateFormat("EEEE").format(eventDate);
+            if (eventDate == null) continue;
 
-                                while (timingRs.next()) {
-                                    String dayOfWeek = timingRs.getString("day_of_week");
-                                    Time classStart = timingRs.getTime("start_time");
-                                    Time classEnd = timingRs.getTime("end_time");
+            // Use your SQL to find overlapping classes
+            String overlapSql = "SELECT c.tid, ct.cid, ct.day_of_week, ct.start_time, ct.end_time, c.subject " +
+                    "FROM attends a " +
+                    "JOIN class_timing ct ON a.cid = ct.cid " +
+                    "JOIN class c ON c.cid = ct.cid " +
+                    "WHERE a.sid = ? " +
+                    "AND ct.day_of_week = ? " +
+                    "AND ( " +
+                    "      (ct.start_time BETWEEN ? AND ?) " +
+                    "   OR (ct.end_time BETWEEN ? AND ?) " +
+                    "   OR (? BETWEEN ct.start_time AND ct.end_time) " +
+                    "   OR (? BETWEEN ct.start_time AND ct.end_time) " +
+                    ")";
 
-                                    if (eventDay.equalsIgnoreCase(dayOfWeek)
-                                            && timesOverlap(eventStart, eventEnd, classStart, classEnd)) {
-                                        System.out.println("Inserting notification for teacher tid=" + tid + ", student=" + s.getName() + ", subject=" + subject);
-                                        // Insert notification for teacher
-                                        String notifSql = "INSERT INTO teacher_notifications (tid, message, created_at) VALUES (?, ?, NOW())";
-                                        try (PreparedStatement notifStmt = conn.prepareStatement(notifSql)) {
-                                            String msg = "Student " + s.getName() + " attended event '" + ename + "' during your class (" + subject + ") on " + eventDate;
-                                            notifStmt.setInt(1, tid);
-                                            notifStmt.setString(2, msg);
-                                            notifStmt.executeUpdate();
-                                        }
-                                    }
-                                }
-                            }
+            String eventDay = new java.text.SimpleDateFormat("EEEE").format(eventDate); // e.g., "Wednesday"
+            try (PreparedStatement overlapStmt = conn.prepareStatement(overlapSql)) {
+                overlapStmt.setInt(1, s.getSid());
+                overlapStmt.setString(2, eventDay);
+                overlapStmt.setTime(3, eventStart);
+                overlapStmt.setTime(4, eventEnd);
+                overlapStmt.setTime(5, eventStart);
+                overlapStmt.setTime(6, eventEnd);
+                overlapStmt.setTime(7, eventStart);
+                overlapStmt.setTime(8, eventEnd);
+
+                try (ResultSet rs = overlapStmt.executeQuery()) {
+                    while (rs.next()) {
+                        int tid = rs.getInt("tid");
+                        int cid = rs.getInt("cid");
+                        String subject = rs.getString("subject");
+                        // Insert notification for teacher
+                        String notifSql = "INSERT INTO teacher_notifications (tid, message, created_at) VALUES (?, ?, NOW())";
+                        try (PreparedStatement notifStmt = conn.prepareStatement(notifSql)) {
+                            notifStmt.setInt(1, tid);
+                            notifStmt.setString(2, "Student " + s.getName() + " missed class (" + subject + ") due to event attendance.");
+                            notifStmt.executeUpdate();
                         }
                     }
                 }
             }
+        }
+
+        // After all notifications are sent, update confirmationStatus
+        String updateClubSql = "UPDATE clubs SET confirmationStatus = 'yes' WHERE clubName = ?";
+        try (PreparedStatement updateStmt = conn.prepareStatement(updateClubSql)) {
+            updateStmt.setString(1, organizerClubName);
+            updateStmt.executeUpdate();
         }
     } catch (SQLException ex) {
         ex.printStackTrace();

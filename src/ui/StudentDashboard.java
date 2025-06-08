@@ -45,7 +45,7 @@ public class StudentDashboard extends JFrame {
     private void loadEvents() {
         eventsPanel.removeAll();
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
             String sql = "SELECT eid, ename, date, startTime, endTime, image FROM events";
             try (PreparedStatement stmt = conn.prepareStatement(sql);
                  ResultSet rs = stmt.executeQuery()) {
@@ -116,7 +116,7 @@ public class StudentDashboard extends JFrame {
         teachersPanel.setBorder(BorderFactory.createTitledBorder("My Teachers"));
 
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
             String sql = "SELECT t.tname, t.email, c.dept, c.sem, c.subject " +
                          "FROM attends a " +
                          "JOIN class c ON a.cid = c.cid " +
@@ -156,7 +156,7 @@ public class StudentDashboard extends JFrame {
 
     private void registerForEvent(int eid, String ename) {
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
             // Check if already registered
             String checkSql = "SELECT * FROM participatesIn WHERE sid = ? AND eid = ?";
             try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
@@ -184,7 +184,7 @@ public class StudentDashboard extends JFrame {
 
     private void insertStudent(String username) {
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
             String insertStudent = "INSERT INTO student (sname, username) VALUES (?, ?)";
             PreparedStatement stmt = conn.prepareStatement(insertStudent);
             stmt.setString(1, sname); // student's name from signup form
@@ -221,7 +221,7 @@ public class StudentDashboard extends JFrame {
 
             // Insert into participatesIn and optionally a registration details table
             try (Connection conn = DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                    "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
                 // Insert into participatesIn
                 String sql = "INSERT INTO participatesIn (sid, eid) VALUES (?, ?)";
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -254,7 +254,7 @@ public class StudentDashboard extends JFrame {
         profile.append("Name: ").append(sname).append("\n");
 
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
             // Fetch registration details
             String sql = "SELECT e.ename FROM participatesIn p JOIN events e ON p.eid = e.eid WHERE p.sid = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -282,7 +282,7 @@ public class StudentDashboard extends JFrame {
 
     private void login(String username, String password) {
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
             String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
             PreparedStatement stmt = conn.prepareStatement(sql);
             stmt.setString(1, username);

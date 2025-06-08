@@ -6,9 +6,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserService {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/attendance_system";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "meme@Kbaal3";
+    private static final String DB_PASSWORD = "password";
 
     public void registerUser(User user) {
         String insertQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";

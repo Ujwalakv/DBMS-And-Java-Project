@@ -3,13 +3,13 @@ package services;
 import java.sql.*;
 
 public class AuthService {
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/attendance_system";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "meme@Kbaal3";
+    private static final String DB_PASSWORD = "password";
 
     public boolean login(String username, String password) {
         String query = "SELECT * FROM users WHERE username = ? AND password = ?";
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password");
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, username);
             stmt.setString(2, password);
@@ -24,7 +24,7 @@ public class AuthService {
     public boolean signup(String username, String password, String role) {
         String checkQuery = "SELECT * FROM users WHERE username = ?";
         String insertQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password");
              PreparedStatement checkStmt = conn.prepareStatement(checkQuery)) {
             checkStmt.setString(1, username);
             ResultSet rs = checkStmt.executeQuery();
@@ -50,7 +50,7 @@ public class AuthService {
 
     public String loginAndGetRole(String username, String password) {
         String query = "SELECT role FROM users WHERE username = ? AND password = ?";
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        try (Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password");
              PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, username);
             stmt.setString(2, password);

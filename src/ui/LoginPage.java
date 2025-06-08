@@ -59,7 +59,7 @@ public class LoginPage extends JFrame {
                         try {
                             // Connect to DB and get tid and tname using username
                             Connection conn = DriverManager.getConnection(
-                                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password");
+                                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password");
                             String sql = "SELECT tid, tname FROM teacher WHERE username = ?";
                             PreparedStatement stmt = conn.prepareStatement(sql);
                             stmt.setString(1, username);
@@ -81,7 +81,7 @@ public class LoginPage extends JFrame {
                         try {
                             // Connect to DB and get sid using sname (username)
                             Connection conn = DriverManager.getConnection(
-                                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password");
+                                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password");
                             String sql = "SELECT sid, sname FROM student WHERE username = ?";
                             PreparedStatement stmt = conn.prepareStatement(sql);
                             stmt.setString(1, username);
@@ -115,7 +115,7 @@ public class LoginPage extends JFrame {
                 String newPassword = JOptionPane.showInputDialog(this, "Enter your new password:");
                 if (newPassword != null && !newPassword.trim().isEmpty()) {
                     try (Connection conn = DriverManager.getConnection(
-                            "jdbc:mysql://localhost:3306/attendance_system", "user", "password")) {
+                            "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
                         String sql = "UPDATE users SET password = ? WHERE username = ?";
                         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                             stmt.setString(1, newPassword);
@@ -134,6 +134,44 @@ public class LoginPage extends JFrame {
                 }
             }
         });
+    }
+
+    // Overlap/notification logic example:
+    private void checkClassOverlap(int sid, String dayOfWeek, String startTime, String endTime) {
+        String overlapSql = "SELECT c.tid, ct.cid, ct.day_of_week, ct.start_time, ct.end_time, c.subject " +
+            "FROM attends a " +
+            "JOIN class_timing ct ON a.cid = ct.cid " +
+            "JOIN class c ON c.cid = ct.cid " +
+            "WHERE a.sid = ? " +
+            "AND ct.day_of_week = ? " +
+            "AND ( " +
+            "      (ct.start_time BETWEEN ? AND ?) " +
+            "   OR (ct.end_time BETWEEN ? AND ?) " +
+            "   OR (? BETWEEN ct.start_time AND ct.end_time) " +
+            "   OR (? BETWEEN ct.start_time AND ct.end_time) " +
+            ")";
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password");
+             PreparedStatement stmt = conn.prepareStatement(overlapSql)) {
+            stmt.setInt(1, sid);
+            stmt.setString(2, dayOfWeek);
+            stmt.setString(3, startTime);
+            stmt.setString(4, endTime);
+            stmt.setString(5, startTime);
+            stmt.setString(6, endTime);
+            stmt.setString(7, startTime);
+            stmt.setString(8, endTime);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                // Extract class details and notify the teacher
+                int tid = rs.getInt("tid");
+                int cid = rs.getInt("cid");
+                String subject = rs.getString("subject");
+                // Insert notification logic here, e.g., insert into teacher_notifications table
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {

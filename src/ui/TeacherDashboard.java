@@ -47,7 +47,7 @@ public class TeacherDashboard extends JFrame {
     private void loadClassesAndStudents() {
         classesPanel.removeAll();
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
             // Get all classes handled by this teacher
             String classSql = "SELECT cid, sem, dept, subject FROM class WHERE tid = ?";
             try (PreparedStatement classStmt = conn.prepareStatement(classSql)) {
@@ -154,7 +154,7 @@ public class TeacherDashboard extends JFrame {
 
                 int cid = -1;
                 try (Connection conn = DriverManager.getConnection(
-                        "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                        "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
                     // Insert into class table
                     String sql = "INSERT INTO class (subject, sem, dept, tid) VALUES (?, ?, ?, ?)";
                     try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -203,7 +203,7 @@ public class TeacherDashboard extends JFrame {
         if (sidInput != null && !sidInput.trim().isEmpty()) {
             String[] sidStrings = sidInput.split(",");
             try (Connection conn = DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                    "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
                 String sql = "INSERT INTO attends (cid, sid) VALUES (?, ?)";
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     for (String sidStr : sidStrings) {
@@ -242,7 +242,7 @@ public class TeacherDashboard extends JFrame {
         int result = JOptionPane.showConfirmDialog(this, timingPanel, "Add Class Timings", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result == JOptionPane.OK_OPTION) {
             try (Connection conn = DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
+                    "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
                 String sql = "INSERT INTO class_timing (cid, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?)";
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     for (int i = 0; i < days.length; i++) {
@@ -270,16 +270,34 @@ public class TeacherDashboard extends JFrame {
         profile.append("Teacher ID: ").append(tid).append("\n");
         profile.append("Name: ").append(tname).append("\n");
 
-        // Fetch email and clubName
+        // Fetch email
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "user", "password")) {
-            String teacherSql = "SELECT email, clubName FROM teacher WHERE tid = ?";
+                "jdbc:mysql://localhost:3306/YOUR_DATABASE_NAME", "root", "password")) {
+            String teacherSql = "SELECT email FROM teacher WHERE tid = ?";
             try (PreparedStatement teacherStmt = conn.prepareStatement(teacherSql)) {
                 teacherStmt.setInt(1, tid);
                 try (ResultSet rs = teacherStmt.executeQuery()) {
                     if (rs.next()) {
                         profile.append("Email: ").append(rs.getString("email")).append("\n");
-                        profile.append("Club Name: ").append(rs.getString("clubName")).append("\n");
+                    }
+                }
+            }
+
+            // Fetch notifications for this teacher
+            String notifSql = "SELECT message, created_at FROM teacher_notifications WHERE tid = ? ORDER BY created_at DESC";
+            try (PreparedStatement notifStmt = conn.prepareStatement(notifSql)) {
+                notifStmt.setInt(1, tid);
+                try (ResultSet notifRs = notifStmt.executeQuery()) {
+                    boolean found = false;
+                    profile.append("\n--- Notifications ---\n");
+                    while (notifRs.next()) {
+                        found = true;
+                        String msg = notifRs.getString("message");
+                        Timestamp ts = notifRs.getTimestamp("created_at");
+                        profile.append(ts).append(": ").append(msg).append("\n");
+                    }
+                    if (!found) {
+                        profile.append("No notifications.\n");
                     }
                 }
             }
